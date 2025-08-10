@@ -86,6 +86,36 @@ describe('LoadNodesAndCredentials', () => {
 			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
 		});
 
+		it('should add toolDescription property after callout property', () => {
+			fullNodeWrapper.description.properties = [
+				{
+					displayName: 'Callout 1',
+					name: 'callout1',
+					type: 'callout',
+					default: '',
+				},
+				{
+					displayName: 'Callout 2',
+					name: 'callout2',
+					type: 'callout',
+					default: '',
+				},
+				{
+					displayName: 'Another',
+					name: 'another',
+					type: 'boolean',
+					default: true,
+				},
+			] satisfies INodeProperties[];
+
+			const result = instance.convertNodeToAiTool(fullNodeWrapper);
+			const toolDescriptionPropIndex = result.description.properties.findIndex(
+				(prop) => prop.name === 'toolDescription',
+			);
+			expect(toolDescriptionPropIndex).toBe(2);
+			expect(result.description.properties).toHaveLength(4);
+		});
+
 		it('should set codex categories correctly', () => {
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
 			expect(result.description.codex).toEqual({
@@ -292,9 +322,9 @@ describe('LoadNodesAndCredentials', () => {
 				},
 			] as unknown as INodeTypeDescription[];
 			// private field
-			// eslint-disable-next-line @typescript-eslint/dot-notation
+
 			instance['known'].nodes.testNode = { className: 'TestNode', sourcePath: '/path/to/testNode' };
-			// eslint-disable-next-line @typescript-eslint/dot-notation
+
 			instance['known'].credentials['testCredential'] = {
 				className: 'TestCredential',
 				sourcePath: '/path/to/testCredential',
@@ -325,7 +355,6 @@ describe('LoadNodesAndCredentials', () => {
 							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 						displayName: 'Description',
 						name: 'toolDescription',
-						placeholder: 'e.g. A test node',
 						required: true,
 						type: 'string',
 						typeOptions: {
@@ -341,7 +370,7 @@ describe('LoadNodesAndCredentials', () => {
 
 			expect(instance.types.nodes).toHaveLength(2);
 			// accesses private property
-			// eslint-disable-next-line @typescript-eslint/dot-notation
+
 			expect(instance['known'].credentials.testCredential.supportedNodes).toEqual([
 				'testNode',
 				'testNodeTool',
@@ -380,7 +409,6 @@ describe('LoadNodesAndCredentials', () => {
 						typeOptions: { rows: 2 },
 						description:
 							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-						placeholder: 'e.g. A test node',
 					},
 				],
 				codex: {

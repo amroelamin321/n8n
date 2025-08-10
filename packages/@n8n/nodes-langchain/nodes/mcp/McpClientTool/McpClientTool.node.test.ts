@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { mock } from 'jest-mock-extended';
 import {
+	NodeConnectionTypes,
 	NodeOperationError,
 	type ILoadOptionsFunctions,
 	type INode,
@@ -38,6 +39,7 @@ describe('McpClientTool', () => {
 					description: 'MyTool does something',
 					name: 'MyTool',
 					value: 'MyTool',
+					inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
 				},
 			]);
 		});
@@ -57,7 +59,7 @@ describe('McpClientTool', () => {
 			jest.resetAllMocks();
 		});
 
-		it('should return a valid toolkit with usable tools', async () => {
+		it('should return a valid toolkit with usable tools (that returns a string)', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			jest
 				.spyOn(Client.prototype, 'callTool')
@@ -93,7 +95,7 @@ describe('McpClientTool', () => {
 			expect(tools).toHaveLength(2);
 
 			const toolCallResult = await tools[0].invoke({ input: 'foo' });
-			expect(toolCallResult).toEqual([{ type: 'text', text: 'result from tool' }]);
+			expect(toolCallResult).toEqual(JSON.stringify([{ type: 'text', text: 'result from tool' }]));
 		});
 
 		it('should support selecting tools to expose', async () => {
@@ -282,6 +284,79 @@ describe('McpClientTool', () => {
 			expect(fetchSpy).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
 			});
+		});
+
+		it('should successfully execute a tool', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: 'Sunny' });
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'Weather Tool',
+						description: 'Gets the current weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: jest.fn(() =>
+						mock<INode>({
+							typeVersion: 1,
+						}),
+					),
+					logger: { debug: jest.fn(), error: jest.fn() },
+					addInputData: jest.fn(() => ({ index: 0 })),
+				}),
+				0,
+			);
+
+			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
+			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+
+			const tools = (supplyDataResult.response as McpToolkit).getTools();
+			const toolResult = await tools[0].invoke({ location: 'Berlin' });
+			expect(toolResult).toEqual('Sunny');
+		});
+
+		it('should handle tool errors', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ isError: true, content: [{ text: 'Weather unknown at location' }] });
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'Weather Tool',
+						description: 'Gets the current weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const supplyDataFunctions = mock<ISupplyDataFunctions>({
+				getNode: jest.fn(() =>
+					mock<INode>({
+						typeVersion: 1,
+					}),
+				),
+				logger: { debug: jest.fn(), error: jest.fn() },
+				addInputData: jest.fn(() => ({ index: 0 })),
+			});
+			const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
+
+			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
+			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+
+			const tools = (supplyDataResult.response as McpToolkit).getTools();
+			const toolResult = await tools[0].invoke({ location: 'Berlin' });
+			expect(toolResult).toEqual('Weather unknown at location');
+			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiTool,
+				0,
+				new NodeOperationError(supplyDataFunctions.getNode(), 'Weather unknown at location'),
+			);
 		});
 	});
 });
