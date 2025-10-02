@@ -7,8 +7,9 @@ import {
 } from 'n8n-workflow';
 
 import { makeAddRow, getAddRow } from '../../common/addRow';
+import { DRY_RUN } from '../../common/fields';
 import { getSelectFields, getSelectFilter } from '../../common/selectMany';
-import { getDataTableProxyExecute } from '../../common/utils';
+import { getDataTableProxyExecute, getDryRunParameter } from '../../common/utils';
 
 export const FIELD: string = 'upsert';
 
@@ -22,6 +23,15 @@ const displayOptions: IDisplayOptions = {
 export const description: INodeProperties[] = [
 	...getSelectFields(displayOptions),
 	makeAddRow(FIELD, displayOptions),
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		options: [DRY_RUN],
+		displayOptions,
+	},
 ];
 
 export async function execute(
@@ -29,10 +39,9 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const dataStoreProxy = await getDataTableProxyExecute(this, index);
-
+	const dryRun = getDryRunParameter(this, index);
 	const row = getAddRow(this, index);
-
-	const filter = getSelectFilter(this, index);
+	const filter = await getSelectFilter(this, index);
 
 	if (filter.filters.length === 0) {
 		throw new NodeOperationError(this.getNode(), 'At least one condition is required');
@@ -41,6 +50,7 @@ export async function execute(
 	const result = await dataStoreProxy.upsertRow({
 		data: row,
 		filter,
+		dryRun,
 	});
 
 	return result.map((json) => ({ json }));
