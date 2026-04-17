@@ -1,43 +1,30 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { N8nButton, N8nHeading, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { type ChatHubLLMProvider, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { useI18n } from '@n8n/i18n';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
-		provider: ChatHubLLMProvider;
+		credentialType: string;
+		displayName: string;
 		initialValue: string | null;
-		onSelect: (provider: ChatHubLLMProvider, credentialId: string | null) => void;
-		onCreateNew: (provider: ChatHubLLMProvider) => void;
+		onSelect: (credentialId: string | null) => void;
 	};
 }>();
 
 const i18n = useI18n();
-const message = useMessage();
-const toast = useToast();
-const credentialsStore = useCredentialsStore();
+const telemetry = useTelemetry();
+
 const modalBus = ref(createEventBus());
 const selectedCredentialId = ref<string | null>(props.data.initialValue);
 
-const credentialType = computed(() => PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider]);
-
-const selectedCredential = computed(() => {
-	if (!selectedCredentialId.value) {
-		return null;
-	}
-	return credentialsStore.getCredentialById(selectedCredentialId.value);
-});
+const displayName = computed(() => props.data.displayName);
 
 function onCredentialSelect(credentialId: string) {
 	selectedCredentialId.value = credentialId;
@@ -47,49 +34,30 @@ function onCredentialDeselect() {
 	selectedCredentialId.value = null;
 }
 
-async function onDeleteCredential() {
-	if (!selectedCredential.value) {
+function onDeleteCredential(credentialId: string) {
+	if (!selectedCredentialId.value || credentialId !== selectedCredentialId.value) {
 		return;
 	}
 
-	const credentialIdToDelete = selectedCredential.value.id;
+	selectedCredentialId.value = null;
 
-	const deleteConfirmed = await message.confirm(
-		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', {
-			interpolate: { savedCredentialName: selectedCredential.value.name },
-		}),
-		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
-		{
-			confirmButtonText: i18n.baseText(
-				'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
-			),
-		},
-	);
-
-	if (deleteConfirmed !== MODAL_CONFIRM) {
-		return;
+	if (credentialId === props.data.initialValue) {
+		props.data.onSelect(null);
 	}
+}
 
-	try {
-		await credentialsStore.deleteCredential({ id: credentialIdToDelete });
-		selectedCredentialId.value = null;
-
-		if (credentialIdToDelete === props.data.initialValue) {
-			props.data.onSelect(props.data.provider, null);
-		}
-
-		modalBus.value.emit('close');
-	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('credentialEdit.credentialEdit.showError.deleteCredential.title'),
-		);
-	}
+function onCredentialModalOpened(credentialId?: string) {
+	telemetry.track('User opened Credential modal', {
+		credential_type: props.data.credentialType,
+		source: 'chat',
+		new_credential: !credentialId,
+		workflow_id: null,
+	});
 }
 
 function onConfirm() {
 	if (selectedCredentialId.value) {
-		props.data.onSelect(props.data.provider, selectedCredentialId.value);
+		props.data.onSelect(selectedCredentialId.value);
 		modalBus.value.emit('close');
 	}
 }
@@ -111,7 +79,7 @@ function onCancel() {
 		<template #header>
 			<div :class="$style.header">
 				<CredentialIcon
-					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[data.provider]"
+					:credential-type-name="data.credentialType"
 					:size="24"
 					:class="$style.icon"
 				/>
@@ -119,7 +87,7 @@ function onCancel() {
 					{{
 						i18n.baseText('chatHub.credentials.selector.title', {
 							interpolate: {
-								provider: providerDisplayNames[data.provider],
+								provider: displayName,
 							},
 						})
 					}}
@@ -132,7 +100,7 @@ function onCancel() {
 					{{
 						i18n.baseText('chatHub.credentials.selector.chooseOrCreate', {
 							interpolate: {
-								provider: providerDisplayNames[data.provider],
+								provider: displayName,
 							},
 						})
 					}}
@@ -140,31 +108,25 @@ function onCancel() {
 				<div :class="$style.credentialContainer">
 					<CredentialPicker
 						:class="$style.credentialPicker"
-						:app-name="providerDisplayNames[data.provider]"
-						:credential-type="credentialType"
+						:app-name="displayName"
+						:credential-type="data.credentialType"
 						:selected-credential-id="selectedCredentialId"
+						:show-delete="true"
 						:hide-create-new="true"
 						@credential-selected="onCredentialSelect"
 						@credential-deselected="onCredentialDeselect"
-					/>
-					<N8nIconButton
-						v-if="selectedCredentialId"
-						native-type="button"
-						:title="i18n.baseText('chatHub.credentials.selector.deleteButton')"
-						icon="trash-2"
-						icon-size="large"
-						type="secondary"
-						@click="onDeleteCredential"
+						@credential-deleted="onDeleteCredential"
+						@credential-modal-opened="onCredentialModalOpened"
 					/>
 				</div>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="tertiary" @click="onCancel">
+				<N8nButton variant="subtle" @click="onCancel">
 					{{ i18n.baseText('chatHub.credentials.selector.cancel') }}
 				</N8nButton>
-				<N8nButton type="primary" :disabled="!selectedCredentialId" @click="onConfirm">
+				<N8nButton variant="solid" :disabled="!selectedCredentialId" @click="onConfirm">
 					{{ i18n.baseText('chatHub.credentials.selector.confirm') }}
 				</N8nButton>
 			</div>

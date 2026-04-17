@@ -16,13 +16,22 @@ export interface BaseEntity {
 	reload(): Promise<void>;
 }
 
-export interface TimestampedEntity {
-	id: string;
+export interface CreatedAtEntity {
 	createdAt: Date;
+}
+export interface TimestampedEntity extends CreatedAtEntity {
 	updatedAt: Date;
 }
 
-export type EntityClass = new () => BaseEntity | TimestampedEntity;
+export interface TimestampedIdEntity extends TimestampedEntity {
+	id: string;
+}
+
+export type EntityClass = new () =>
+	| BaseEntity
+	| TimestampedIdEntity
+	| TimestampedEntity
+	| CreatedAtEntity;
 
 export type ModuleSettings = Record<string, unknown>;
 export type ModuleContext = Record<string, unknown>;
@@ -30,6 +39,8 @@ export type ModuleContext = Record<string, unknown>;
 export interface ModuleInterface {
 	init?(): Promise<void>;
 	shutdown?(): Promise<void>;
+
+	commands?(): Promise<void>;
 
 	/**
 	 * Return a list of entities to register with the typeorm database connection.
