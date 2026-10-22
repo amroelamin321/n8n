@@ -1,5 +1,4 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import { createToolRegistry } from '../../../tool-registry';
 import type {
 	CheckpointSettleResult,
 	OrchestrationContext,
@@ -38,7 +37,6 @@ function makeContext(
 			subscribe: vi.fn(),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: { get: vi.fn(), save: vi.fn() },
 		plannedTaskService: service,
@@ -126,7 +124,7 @@ describe('createCompleteCheckpointTool', () => {
 		});
 
 		expect(res.ok).toBe(false);
-		expect(res.result).toContain('workflows(action="setup"');
+		expect(res.result).toContain('workflow_builder_workflows(action="setup"');
 		expect(res.result).toContain('saved-wf-1');
 		expect(res.result).toContain('Slack');
 		expect(service.markCheckpointSucceeded).not.toHaveBeenCalled();
@@ -225,7 +223,7 @@ describe('createCompleteCheckpointTool', () => {
 		expect(service.markCheckpointSucceeded).toHaveBeenCalled();
 		expect(res.result).toContain('Slack (slackApi)');
 		expect(res.result).toContain('skipped');
-		expect(res.result).not.toContain('workflows(action="setup"');
+		expect(res.result).not.toContain('workflow_builder_workflows(action="setup"');
 	});
 
 	it('marks a checkpoint failed via markCheckpointFailed', async () => {
@@ -306,7 +304,7 @@ describe('createCompleteCheckpointTool', () => {
 
 		expect(res.ok).toBe(false);
 		expect(res.result).toContain('not a checkpoint');
-		expect(res.result).toContain('build-workflow');
+		expect(res.result).toContain('actual kind: build-workflow');
 	});
 
 	it('returns error string on wrong-status', async () => {

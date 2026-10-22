@@ -65,6 +65,7 @@ describe('GlobalConfig', () => {
 		hideUsagePage: false,
 		deployment: {
 			type: 'default',
+			artifact: '',
 		},
 		mfa: {
 			enabled: true,
@@ -78,7 +79,10 @@ describe('GlobalConfig', () => {
 		proxy_hops: 0,
 		ssl_key: '',
 		ssl_cert: '',
-		canvasOnly: false,
+		canvasOnly: {
+			enabled: false,
+			personalSpaceScopeDenyList: [],
+		},
 		editorBaseUrl: '',
 		webhookUrl: '',
 		dataTable: {
@@ -176,6 +180,10 @@ describe('GlobalConfig', () => {
 					'project-shared': '',
 					'api-key-revoked': '',
 					'mcp-client-revoked': '',
+					'email-change-requested': '',
+					'email-change-completed': '',
+					'agent-budget-alert': '',
+					'migration-findings': '',
 				},
 			},
 		},
@@ -198,17 +206,33 @@ describe('GlobalConfig', () => {
 		featureFlags: {
 			override: {},
 		},
+		activityLog: {
+			retentionDays: 0,
+			maxEntries: 1_000,
+		},
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
 			mergeSqlSandboxMemoryLimitMb: 64,
+			blockDeprecated: true,
 		},
 		publicApi: {
 			disabled: false,
 			path: 'api',
 			swaggerUiDisabled: false,
+			rateLimit: {
+				enabled: false,
+				globalReadLimit: 1200,
+				globalReadWindowSeconds: 60,
+				globalWriteLimit: 600,
+				globalWriteWindowSeconds: 60,
+				endpointReadLimit: 1000,
+				endpointReadWindowSeconds: 60,
+				endpointWriteLimit: 500,
+				endpointWriteWindowSeconds: 60,
+			},
 		},
 		templates: {
 			enabled: true,
@@ -230,7 +254,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingBatchSize: 10,
-			useWorkflowPublicationService: false,
+			useWorkflowPublicationService: true,
 			publicationOutboxPollIntervalMs: 15_000,
 			publicationOutboxLeaseSeconds: 120,
 			workflowPublicationConcurrency: 5,
@@ -240,6 +264,8 @@ describe('GlobalConfig', () => {
 			publicationOutboxCleanupBatchSize: 1000,
 			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
+			groupsWithTriggersEnabled: false,
+			groupsWithManyBoundariesEnabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -262,11 +288,13 @@ describe('GlobalConfig', () => {
 				includeSchedulerMetrics: false,
 				schedulerMetricsInterval: 20,
 				includePollTriggerMetrics: false,
+				includeSystemTaskMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
 				includeExecutionDataMetrics: false,
 				includeSsrfMetrics: false,
+				includeEncryptionMetrics: false,
 				includeDnsCacheMetrics: false,
 				includeWebhookMetrics: false,
 				includeFormMetrics: false,
@@ -274,6 +302,7 @@ describe('GlobalConfig', () => {
 				workflowInfoMetricInterval: 60,
 				includeDbPoolMetrics: false,
 				includeWorkflowPublicationMetrics: false,
+				includeMcpPostSaveMetrics: false,
 				workflowPublicationMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
@@ -285,7 +314,6 @@ describe('GlobalConfig', () => {
 			mcp: 'mcp',
 			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
-			mcpCanvasGroupsEnabled: false,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
@@ -295,6 +323,7 @@ describe('GlobalConfig', () => {
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
 			health: '/healthz',
+			frontendHealthCheckTimeoutMs: 5000,
 		},
 		cache: {
 			backend: 'auto',
@@ -328,6 +357,7 @@ describe('GlobalConfig', () => {
 			streamStateTtl: 300,
 		},
 		instanceAi: {
+			workflowSuggestionsEnabled: false,
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
@@ -338,7 +368,9 @@ describe('GlobalConfig', () => {
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
+			memoryModel: '',
 			reflectorObservationTokens: 40_000,
+			midRunObservation: false,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -350,6 +382,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
+			evalInstance: false,
 			sandboxAutoStopMinutes: 15,
 			sandboxAutoArchiveMinutes: 60,
 			sandboxAutoDeleteMinutes: 10_080,
@@ -365,11 +398,13 @@ describe('GlobalConfig', () => {
 			confirmationTimeout: 86_400_000,
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
-			instanceAiSetupPanelEnabled: false,
-			activationCapped: false,
-			activationLockMessageThreshold: 1,
+			promptVersion: '',
+			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
+			maxConcurrentRuns: -1,
+			maxConcurrentRunsPerUser: -1,
+			maxConcurrentSubAgents: -1,
 		},
 		queue: {
 			health: {
@@ -408,6 +443,11 @@ describe('GlobalConfig', () => {
 					stalledInterval: 30_000,
 				},
 			},
+			workerPool: {
+				enabled: false,
+				name: '',
+			},
+			suspendExecutionsOnShutdown: false,
 		},
 		taskRunners: {
 			mode: 'internal',
@@ -458,7 +498,7 @@ describe('GlobalConfig', () => {
 			interval: 3,
 		},
 		scheduler: {
-			enabled: false,
+			enabled: true,
 			materializationWindowSeconds: 60,
 			materializationIntervalSeconds: 10,
 			materializationTimeoutSeconds: 60,
@@ -474,16 +514,16 @@ describe('GlobalConfig', () => {
 			retentionIntervalSeconds: 3600,
 			retentionTimeoutSeconds: 300,
 			jitterRatio: 0.1,
-			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
-			triggerNodeMode: 'legacy',
+			triggerNodeMode: 'new',
 			enabledForPollTriggers: false,
 			pollTimeoutSeconds: 45,
-			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
+			taskTimeoutSeconds: 300,
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
 			enabledForSystemTasks: false,
+			enabledForAgentTasks: false,
 			ownerReconciliationEnabled: true,
 			ownerReconciliationIntervalSeconds: 900,
 			ownerReconciliationTimeoutSeconds: 300,
@@ -495,6 +535,7 @@ describe('GlobalConfig', () => {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
 			agentEvalsEnabled: false,
+			forceAgentWorthTesting: false,
 			agentEvalsRunTimeoutMinutes: 60,
 		},
 		generic: {
@@ -523,6 +564,7 @@ describe('GlobalConfig', () => {
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			awsSystemCredentialsSdkSources: 'all',
+			azureStorageCustomEndpoints: false,
 			enableGitNodeHooks: false,
 			enableGitNodeAllConfigKeys: false,
 			postMessageAllowedOrigins: '',
@@ -562,6 +604,10 @@ describe('GlobalConfig', () => {
 			maxDisplaySize: 100 * 1024 * 1024,
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
+			preExecuteErrorCreatesExecution: false,
+		},
+		memoryGuard: {
+			enabled: false,
 		},
 		diagnostics: {
 			enabled: true,
@@ -647,20 +693,23 @@ describe('GlobalConfig', () => {
 			optimizingTimeWindowHours: 2,
 			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
-			trimOnStartUp: false,
-			skipOnStartUp: false,
 		},
 		expressionEngine: {
 			engine: 'vm',
+			frontendEngine: 'legacy',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
 			bridgeMemoryLimit: 128,
 			observabilityEnabled: true,
-			tracesEnabled: true,
+			tracesEnabled: false,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
 			allowWebhookIsolateSkip: true,
+			lazyAcquire: false,
+			compileCache: false,
+			nativeEvaluation: false,
+			nativeEvaluationVerifySample: 0,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -693,10 +742,12 @@ describe('GlobalConfig', () => {
 			communityPackages: '',
 		},
 		agents: {
+			planToolsEnabled: false,
 			checkpointTtlSeconds: 345600,
 			tracingEnabled: true,
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
+			skillsHubEnabled: false,
 			modules: [],
 			backgroundTasksEnabled: false,
 			sandboxEnabled: false,
@@ -705,6 +756,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
 			channelReconcileIntervalSeconds: 60,
+			whatsAppAllowTemporaryToken: false,
 		},
 	} satisfies GlobalConfigShape;
 
@@ -754,6 +806,15 @@ describe('GlobalConfig', () => {
 		expect(config.agents.tracingRecordOutputs).toBe(false);
 	});
 
+	it('should parse N8N_AGENTS_SKILLS_HUB_ENABLED from env variables', () => {
+		process.env = {
+			N8N_AGENTS_SKILLS_HUB_ENABLED: 'true',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.skillsHubEnabled).toBe(true);
+	});
+
 	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
 		process.env = {
 			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
@@ -761,6 +822,15 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
+	});
+
+	it.each([
+		['true', true],
+		['false', false],
+	])('should parse workflow suggestions enabled=%s', (value, expected) => {
+		process.env = { N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED: value };
+
+		expect(Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled).toBe(expected);
 	});
 
 	it('should parse N8N_MANAGED_OAUTH_SHOW_SCOPES from env variables', () => {
@@ -964,6 +1034,84 @@ describe('GlobalConfig', () => {
 			expect(config.database.maxRecoveryBackoffMs).toBe(60000);
 			expect(config.database.connectionAcquisitionTimeoutMs).toBe(10000);
 		});
+	});
+
+	describe('public API rate limit config', () => {
+		it('should read the rate limit settings from env variables', () => {
+			process.env = {
+				N8N_PUBLIC_API_RATE_LIMIT_ENABLED: 'true',
+				N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT: '100',
+				N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_WINDOW_SECONDS: '10',
+				N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT: '50',
+				N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_WINDOW_SECONDS: '20',
+				N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_READ_LIMIT: '30',
+				N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_READ_WINDOW_SECONDS: '30',
+				N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_WRITE_LIMIT: '10',
+				N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_WRITE_WINDOW_SECONDS: '40',
+			};
+			const config = Container.get(GlobalConfig);
+			expect(config.publicApi.rateLimit).toEqual({
+				enabled: true,
+				globalReadLimit: 100,
+				globalReadWindowSeconds: 10,
+				globalWriteLimit: 50,
+				globalWriteWindowSeconds: 20,
+				endpointReadLimit: 30,
+				endpointReadWindowSeconds: 30,
+				endpointWriteLimit: 10,
+				endpointWriteWindowSeconds: 40,
+			});
+		});
+
+		it('should accept a limit of 0', () => {
+			process.env = { N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_READ_LIMIT: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.publicApi.rateLimit.endpointReadLimit).toBe(0);
+		});
+
+		it.each(['-1', '1.5', 'abc'])(
+			'should reject a limit of %s and fall back to the default',
+			(value) => {
+				process.env = { N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT: value };
+				const config = Container.get(GlobalConfig);
+				expect(config.publicApi.rateLimit.globalWriteLimit).toBe(600);
+				expect(consoleWarnMock).toHaveBeenCalledWith(
+					expect.stringContaining('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT'),
+				);
+			},
+		);
+
+		it.each(['0', '-1', '1.5'])(
+			'should reject a window of %s and fall back to the default',
+			(value) => {
+				process.env = { N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_WRITE_WINDOW_SECONDS: value };
+				const config = Container.get(GlobalConfig);
+				expect(config.publicApi.rateLimit.endpointWriteWindowSeconds).toBe(60);
+				expect(consoleWarnMock).toHaveBeenCalledWith(
+					expect.stringContaining('N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_WRITE_WINDOW_SECONDS'),
+				);
+			},
+		);
+	});
+
+	describe('data table cleanup interval config validation', () => {
+		it('should accept a positive N8N_DATA_TABLES_CLEANUP_INTERVAL_MS', () => {
+			process.env = { N8N_DATA_TABLES_CLEANUP_INTERVAL_MS: '30000' };
+			const config = Container.get(GlobalConfig);
+			expect(config.dataTable.cleanupIntervalMs).toBe(30000);
+		});
+
+		it.each(['0', '-5', '1500.5'])(
+			'should reject a data table cleanup interval of %s and fall back to the default',
+			(value) => {
+				process.env = { N8N_DATA_TABLES_CLEANUP_INTERVAL_MS: value };
+				const config = Container.get(GlobalConfig);
+				expect(config.dataTable.cleanupIntervalMs).toBe(60000);
+				expect(consoleWarnMock).toHaveBeenCalledWith(
+					expect.stringContaining('N8N_DATA_TABLES_CLEANUP_INTERVAL_MS'),
+				);
+			},
+		);
 	});
 
 	describe('workflow publication outbox cleanup config validation', () => {

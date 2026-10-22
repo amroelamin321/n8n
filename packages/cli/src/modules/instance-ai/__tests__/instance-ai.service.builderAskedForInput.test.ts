@@ -12,18 +12,15 @@ vi.mock('@n8n/instance-ai', async () => {
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(),
-		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		setupSandboxWorkspace: vi.fn(),
-		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
-			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
-			loadSkill: vi.fn(),
-		})),
-		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
 		createInstanceAgent: vi.fn(),
-		createAllTools: vi.fn(),
+		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 	};
 });
 
@@ -245,8 +242,20 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 			payload: {
 				mcpConnectRequest: {
 					servers: [
-						{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' },
-						{ serverSlug: 'linear', title: 'Linear', credentialType: 'linearMcpOAuth2Api' },
+						{
+							serverSlug: 'brave',
+							title: 'Brave',
+							usesCredentials: [
+								{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
+						{
+							serverSlug: 'linear',
+							title: 'Linear',
+							usesCredentials: [
+								{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
 					],
 				},
 			},
